@@ -24,7 +24,7 @@ router.post('/createMatch', (req,res)=>{
         matchDate: Date.now(),
         homeWin: homeWin,
     })
-    
+
     return _match.save()
     .then(results => {
         return res.status(200).json({
@@ -39,13 +39,19 @@ router.post('/createMatch', (req,res)=>{
 
 })
 
-
-
-router.get('/sayHello', (req,res)=>{
-    return res.status(200).json({
-        resStatus: true,
-        message: 'Hello From NodeJs Server..',
-    });
-});
+router.get('/getMatches', async(req,res) => {
+    try{
+        const matches = await Match.find()
+        return res.status(200).json({
+            message: matches
+        });
+    }
+    catch (err){
+        console.log(err)
+        return res.status(500).json({
+            message: err
+        })
+    }
+})
 
 module.exports = router;
