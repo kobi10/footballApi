@@ -5,7 +5,6 @@ const userSchema = new Schema({
     _id: mongoose.Schema.Types.ObjectId,
     firstName: String,
     lastName: String,
-    age: Number,
     email: String,
     password: String,
     createAt: {type: Date, default:Date.now},

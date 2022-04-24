@@ -8,8 +8,10 @@ const matchSchema = new Schema({
     homeScore: Number,
     awayScore: Number,
     stadium: String,
-    matchDate: Date,
+    matchDate: {type:Date, default: Date.now},
     homeWin: Boolean,
+    pubName: String,//first name last name
+    pubId: {type:mongoose.Schema.Types.ObjectId, ref: 'user' }
 });
 
 module.exports = mongoose.model('Match', matchSchema);

@@ -7,9 +7,10 @@ const Match = require('../Models/match');
 const User = require('../Models/user');
 const bcryptjs = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const auth = require('./auth');
 
-
-router.post('/createMatch', (req,res)=>{
+//create match
+router.post('/createMatch',auth ,(req,res)=>{
 
     const id = mongoose.Types.ObjectId();
     const homeTeamName = req.body.homeTeamName;
@@ -28,6 +29,8 @@ router.post('/createMatch', (req,res)=>{
         stadium: stadium,
         matchDate: Date.now(),
         homeWin: homeWin,
+        pubId: req.user._id,
+        pubName: req.user.firstName + " " + req.user.lastName
     })
 
     return _match.save()
@@ -42,11 +45,10 @@ router.post('/createMatch', (req,res)=>{
     })
 })
 
-})
-
-router.get('/getMatches', async(req,res) => {
-
-    Match.find()
+});
+// get All match
+router.get('/getMatches',auth , async(req,res) => {
+    Match.find().populate('pubId')
     .then(results => {
         return res.status(200).json({
             message: results
@@ -57,13 +59,12 @@ router.get('/getMatches', async(req,res) => {
             message: err
         })
     })
-
-})
-
-router.put('/updateMatch/:matchID', async(req,res) => {
+});
+//update single match
+router.put('/updateMatch/:matchID',auth, async(req,res) => {
     const matchId = req.params.matchID;
     // Match.findOne({homeTeamName:'Juventus'})
-    Match.findById(matchId)
+    Match.findOne({_id: matchId, pubId: req.user._id})
     .then(match => {
         if(match){
             const {homeTeamName, awayTeamName, homeScore, awayScore, stadium, homeWin} = req.body;
@@ -73,6 +74,7 @@ router.put('/updateMatch/:matchID', async(req,res) => {
             match.awayScore = awayScore;
             match.stadium = stadium;
             match.homeWin = homeWin;
+            match.pubId = req.user._id
         
         return match.save()
         .then(match_updated => {
@@ -81,8 +83,8 @@ router.put('/updateMatch/:matchID', async(req,res) => {
             })
         })
     } else{
-        return res.status(404).json({
-            message: 'This game is not exist'
+        return res.status(200).json({
+            message: 'This game is not exist or Forbidden'
         })
     }
 })
@@ -92,8 +94,8 @@ router.put('/updateMatch/:matchID', async(req,res) => {
         })
     })
 });
-
-router.delete('/removeMatch/:id', async(req,res) => {
+//delete single match
+router.delete('/removeMatch/:id',auth, async(req,res) => {
     const matchId = req.params.id;
     Match.findByIdAndDelete(matchId)
     .then(results => {
@@ -108,6 +110,9 @@ router.delete('/removeMatch/:id', async(req,res) => {
     })
 });
 
+
+
+//Accounts
 router.post('/createUser', (req,res) => {
     const id = mongoose.Types.ObjectId();
     const {firstName,lastName,age,email,password} = req.body;
@@ -221,9 +226,83 @@ router.post('/login', async (req,res) => {
     })
 });
 
+//passward_recover
+//verify
+//update_passward
+//במידה והיוזר שכח את הסיסמא צריך לעדכן את הסיסמא של היוזר
+
+router.post('/recoverPassword', async (req,res) => {
+    const {email} = req.body;
+    User.findOne({email: email})
+    .then(async account => {
+        if(account){
+            const code = generateCode(100000,999999);
+            account.passcode = code;
+            return account.save()
+            .then(newpasscode => {
+                return res.status(200).json({
+                    message: newpasscode
+                })
+            })
+        } else {
+            return res.status(200).json({
+                message : 'User not Found'
+            })
+        }
+    })
+    .catch(err => {
+        return res.status(500).json({
+            message: err
+        })
+    })
+});
+
+router.post('/updatePassword', async(req,res) => {
+    const {email , password} = req.body;
+    User.findOne({email:email})
+    .then(async account => {
+        if(account){
+            const hash = await bcryptjs.hash(password,10);
+            account.password = hash;
+            return account.save()
+            .then((newpass) => {
+                return res.status(200).json({
+                    message: newpass
+                })
+            })
+        } else {
+            return res.status(200).json({
+                message:'User not Found'
+            })
+        }
+    })
+    .catch(err => {
+        return res.status(500).json({
+            message: err
+        })
+    })
+
+});
+
+
+router.post('/getTeamMatchs',auth , async(req,res) => {
+    const searchTeam = req.body.searchTeam;
+    Match.find({$or:[{'homeTeamName':searchTeam},{'awayTeamName': searchTeam}]}).populate('pubId')
+    .then(results => {
+        return res.status(200).json({
+            message: results
+        })
+    })
+    .catch(err => {
+        return res.status(500).json({
+            message: err
+        })
+    })
+});
+
 
 
 function generateCode(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
-}
+};
 module.exports = router;
